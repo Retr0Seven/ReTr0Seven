@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./ascii.svg" width="620" alt="Animated ASCII logo for Mouad Hassari — Retr0Seven"/>
+<img src="./hero.svg" width="620" alt="Animated terminal quote and identity card for Mouad Hassari — Retr0Seven"/>
 
 <img src="./stats.svg" width="620" alt="Retr0Seven GitHub activity"/>
 
@@ -77,10 +77,10 @@ and risk-based security thinking.
 
 <img src="./hd-about-this-page.svg" width="620" alt="about this page"/>
 
-Every graphic is generated or stored inside this repository. The avatar is
-converted into animated ASCII and rendered with SMIL inside `ascii.svg`. The
-statistics are redrawn daily from GitHub's GraphQL API by a scheduled GitHub
-Action, which commits only files that changed.
+Every graphic is generated or stored inside this repository. The terminal hero
+renders the quote “you are less valuable than the data you produce” with a
+one-shot SMIL typing animation. The statistics are redrawn daily from GitHub's
+GraphQL API by a scheduled GitHub Action, which commits only files that changed.
 
 No third-party statistics-card server is used. The SVGs use system monospace
 fonts, so the repository contains no bundled font binaries.

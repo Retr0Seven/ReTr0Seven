@@ -3,7 +3,7 @@
 
 No third-party services and no dependencies — standard library only.
 
-Outputs, all sharing one visual language with ascii.svg (the portrait):
+Outputs, all sharing one visual language with hero.svg:
   stats.svg   hero total + weekly sparkline
   streak.svg  current and longest streak
   langs.svg   top languages, by bytes and by repo count
