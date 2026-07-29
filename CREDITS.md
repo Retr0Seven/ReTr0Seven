@@ -1,12 +1,15 @@
 # Credits
 
-The repository structure, self-generated GitHub statistics, SVG heading system,
-and scheduled refresh approach are adapted from:
+The profile architecture is adapted from the self-generated GitHub profile
+README by [andriidrok1](https://github.com/andriidrok1/andriidrok1).
 
-- `andriidrok1/andriidrok1`
+Concepts retained from that project:
 
-This adaptation changes the identity, copy, project content, visual system,
-terminal hero, palette, and font handling for Mouad Hassari (`Retr0Seven`).
+- repository-owned SVG graphics
+- scheduled GitHub GraphQL statistics generation
+- commit-only-when-changed automation
+- SMIL animation inside SVG files
+- no dependency on third-party statistics-card services
 
-No font binaries or portrait assets from the source project are redistributed
-in this package.
+The portrait artwork and all Mouad Hassari profile content in this repository
+were customized for `Retr0Seven`.

@@ -1,37 +1,33 @@
 #!/usr/bin/env python3
-"""Draw the profile README's stat graphics from the GitHub GraphQL API.
+"""Generate the self-hosted SVG graphics used by the Retr0Seven profile README.
 
-No third-party services and no dependencies — standard library only.
+The scheduled workflow uses GitHub's GraphQL API and writes:
+  hero.svg         animated ASCII portrait + contribution telemetry
+  stats-panel.svg  streaks, languages, and a 90-day activity map
 
-Outputs, all sharing one visual language with hero.svg:
-  stats.svg   hero total + weekly sparkline
-  streak.svg  current and longest streak
-  langs.svg   top languages, by bytes and by repo count
-  year.svg    the year as a character map, in the portrait's own ramp
-
-Every file uses the portrait's grey ink, a monospace face, a transparent
-background, and the same left-to-right clipPath reveal with a cursor riding
-the edge. Motion is SMIL because GitHub strips <script> from READMEs.
-
-Env:
-  GITHUB_TOKEN  required
-  GH_LOGIN      user to summarise (default: Retr0Seven)
-  OUT_DIR       where to write (default: repository root)
+No third-party card service is used. The script depends only on Python's
+standard library. Run with --demo to render the included local preview data.
 """
+from __future__ import annotations
+
+import argparse
+import base64
 import json
+import math
 import os
-import sys
 import urllib.request
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
+from xml.sax.saxutils import escape
 
+ROOT = Path(__file__).resolve().parents[1]
+ASSETS = ROOT / "assets"
 API = "https://api.github.com/graphql"
+LOGIN = os.getenv("GH_LOGIN", "Retr0Seven")
+TOKEN = os.getenv("GITHUB_TOKEN", "")
+WIDTH = 620
+MONO = "ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace"
 
-# Two things are pinned for determinism, both learned the hard way:
-#  * the contribution window, to whole UTC days — otherwise "the past year" is
-#    measured from request time and days drift between week buckets, moving the
-#    sparkline a fraction of a pixel and committing noise every night;
-#  * privacy: PUBLIC on repositories — otherwise a personal token sees private
-#    repos and a workflow token doesn't, so language totals disagree.
 QUERY = """
 query($login: String!, $from: DateTime!, $to: DateTime!) {
   user(login: $login) {
@@ -41,8 +37,7 @@ query($login: String!, $from: DateTime!, $to: DateTime!) {
         weeks { contributionDays { contributionCount date weekday } }
       }
     }
-    repositories(first: 100, ownerAffiliations: OWNER, isFork: false,
-                 privacy: PUBLIC) {
+    repositories(first: 100, ownerAffiliations: OWNER, isFork: false, privacy: PUBLIC) {
       nodes {
         languages(first: 12, orderBy: {field: SIZE, direction: DESC}) {
           edges { size node { name } }
@@ -53,412 +48,295 @@ query($login: String!, $from: DateTime!, $to: DateTime!) {
 }
 """
 
-# The portrait's ink is the data ink, so every graphic reads as one material.
-LIGHT = dict(data="#0f766e", emph="#0f172a", dim="#52606d",
-             rule="#cbd5e1", surface="#ffffff")
-DARK = dict(data="#7ee787", emph="#f0f6fc", dim="#8b9baa",
-            rule="#1d3444", surface="#05090f")
-MONO = ("ui-monospace,SFMono-Regular,Menlo,Consolas,"
-        "&apos;Liberation Mono&apos;,monospace")
+STYLE = """
+<style>
+  .ink{fill:#57606a}.emph{fill:#24292f}.dim{fill:#6e7781}.blue{fill:#0969da}
+  .rule{stroke:#d0d7de}.soft{fill:#afb8c1}.cell0{fill:#ebedf0}
+  .cell1{fill:#9be9a8}.cell2{fill:#40c463}.cell3{fill:#30a14e}.cell4{fill:#216e39}
+  @media(prefers-color-scheme:dark){
+    .ink{fill:#c9d1d9}.emph{fill:#f0f6fc}.dim{fill:#8b949e}.blue{fill:#58a6ff}
+    .rule{stroke:#30363d}.soft{fill:#484f58}.cell0{fill:#161b22}
+    .cell1{fill:#0e4429}.cell2{fill:#006d32}.cell3{fill:#26a641}.cell4{fill:#39d353}
+  }
+</style>
+"""
 
 
-def font_text():
-    """Use the viewer's system monospace; no font binaries are bundled."""
-    return ""
-
-
-def font_head():
-    return ""
-
-WIDTH = 620            # every graphic shares one column width
-LEFT = 34              # shared left inset, so stacked blocks line up
-                       # (year.svg needs it for the weekday gutter)
-REVEAL = 1.30          # seconds; matches the portrait's cadence
-RAMP = [" ", ":", "+", "#", "@"]      # steps of the portrait's own ramp
-MON = ["jan", "feb", "mar", "apr", "may", "jun",
-       "jul", "aug", "sep", "oct", "nov", "dec"]
-
-
-# ---------------------------------------------------------------- data
-
-def window():
+def utc_window() -> tuple[str, str]:
     today = datetime.now(timezone.utc).date()
     start = today - timedelta(days=364)
-    return (f"{start.isoformat()}T00:00:00Z", f"{today.isoformat()}T23:59:59Z")
+    return f"{start.isoformat()}T00:00:00Z", f"{today.isoformat()}T23:59:59Z"
 
 
-def fetch(login, token):
-    since, until = window()
-    body = json.dumps({"query": QUERY,
-                       "variables": {"login": login,
-                                     "from": since, "to": until}}).encode()
-    req = urllib.request.Request(
-        API, data=body,
-        headers={"Authorization": f"bearer {token}",
-                 "Content-Type": "application/json",
-                 "User-Agent": f"{login}-profile-stats"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        payload = json.load(r)
-    if "errors" in payload:
-        raise SystemExit(f"GraphQL errors: {payload['errors']}")
+def fetch() -> dict:
+    if not TOKEN:
+        raise SystemExit("GITHUB_TOKEN is required unless --demo is used")
+    start, end = utc_window()
+    body = json.dumps({"query": QUERY, "variables": {"login": LOGIN, "from": start, "to": end}}).encode()
+    request = urllib.request.Request(
+        API,
+        data=body,
+        headers={
+            "Authorization": f"bearer {TOKEN}",
+            "Content-Type": "application/json",
+            "User-Agent": f"{LOGIN}-profile-readme",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        payload = json.load(response)
+    if payload.get("errors"):
+        raise SystemExit(f"GitHub GraphQL error: {payload['errors']}")
     user = (payload.get("data") or {}).get("user")
     if not user:
-        raise SystemExit(f"no such user: {login}")
-    return user
+        raise SystemExit(f"GitHub user not found: {LOGIN}")
+    return summarise_graphql(user)
 
 
-def pretty(iso):
-    d = date.fromisoformat(iso)
-    return f"{MON[d.month - 1]} {d.day}"
+def summarise_graphql(user: dict) -> dict:
+    calendar = user["contributionsCollection"]["contributionCalendar"]
+    days = [day for week in calendar["weeks"] for day in week["contributionDays"]]
+    counts = {day["date"]: int(day["contributionCount"]) for day in days}
+    repos = user["repositories"]["nodes"]
+    language_bytes: dict[str, int] = {}
+    for repo in repos:
+        for edge in (repo.get("languages") or {}).get("edges") or []:
+            name = edge["node"]["name"]
+            language_bytes[name] = language_bytes.get(name, 0) + int(edge["size"])
+    ranked = sorted(language_bytes.items(), key=lambda item: (-item[1], item[0]))[:5]
+    return build_summary(
+        total=int(calendar["totalContributions"]),
+        counts=counts,
+        languages=ranked,
+        as_of=max(counts) if counts else datetime.now(timezone.utc).date().isoformat(),
+    )
 
 
-def streaks(days):
-    """Current and longest runs of days with at least one contribution.
+def load_demo() -> dict:
+    payload = json.loads((ASSETS / "demo-data.json").read_text(encoding="utf-8"))
+    return build_summary(
+        total=int(payload["total"]),
+        counts={key: int(value) for key, value in payload["counts"].items()},
+        languages=[(name, int(value)) for name, value in payload["languages"]],
+        as_of=payload["as_of"],
+    )
 
-    A zero on the final day doesn't break the current streak — the day isn't
-    over yet. Any earlier zero does.
-    """
-    best = dict(length=0, start=None, end=None)
-    run, run_start = 0, None
-    for d in days:
-        if d["contributionCount"] > 0:
-            run += 1
-            run_start = run_start or d["date"]
-            if run > best["length"]:
-                best = dict(length=run, start=run_start, end=d["date"])
+
+def build_summary(total: int, counts: dict[str, int], languages: list[tuple[str, int]], as_of: str) -> dict:
+    end = date.fromisoformat(as_of)
+    start = end - timedelta(days=364)
+    days = [(start + timedelta(days=index), counts.get((start + timedelta(days=index)).isoformat(), 0)) for index in range(365)]
+    active = sum(1 for _, value in days if value > 0)
+
+    weekly: list[int] = []
+    cursor = start
+    while cursor <= end:
+        week_end = min(cursor + timedelta(days=6), end)
+        weekly.append(sum(counts.get((cursor + timedelta(days=i)).isoformat(), 0) for i in range((week_end - cursor).days + 1)))
+        cursor = week_end + timedelta(days=1)
+
+    current_length = 0
+    current_start = None
+    cursor = end
+    while cursor >= start and counts.get(cursor.isoformat(), 0) > 0:
+        current_length += 1
+        current_start = cursor
+        cursor -= timedelta(days=1)
+
+    longest_length = 0
+    longest_start = None
+    longest_end = None
+    run_length = 0
+    run_start = None
+    for day_value, contribution_count in days:
+        if contribution_count > 0:
+            if run_length == 0:
+                run_start = day_value
+            run_length += 1
+            if run_length > longest_length:
+                longest_length = run_length
+                longest_start = run_start
+                longest_end = day_value
         else:
-            run, run_start = 0, None
+            run_length = 0
+            run_start = None
 
-    cur = dict(length=0, start=None, end=None)
-    tail = days[:-1] if days and days[-1]["contributionCount"] == 0 else days
-    for d in reversed(tail):
-        if d["contributionCount"] == 0:
-            break
-        cur["length"] += 1
-        cur["start"] = d["date"]
-        cur["end"] = cur["end"] or d["date"]
-    return cur, best
+    total_language = sum(value for _, value in languages) or 1
+    language_percentages = [(name, value / total_language * 100) for name, value in languages[:5]]
 
-
-def languages(repos):
-    by_size, by_repo = {}, {}
-    for node in repos:
-        edges = (node.get("languages") or {}).get("edges") or []
-        for e in edges:
-            name = e["node"]["name"]
-            by_size[name] = by_size.get(name, 0) + e["size"]
-        if edges:                       # primary language of the repo
-            top = edges[0]["node"]["name"]
-            by_repo[top] = by_repo.get(top, 0) + 1
-
-    def rank(d):
-        # sort by value, then name, so equal values never reorder between runs
-        return sorted(d.items(), key=lambda kv: (-kv[1], kv[0]))[:5]
-
-    return rank(by_size), rank(by_repo)
+    return {
+        "total": total,
+        "active": active,
+        "best_week": max(weekly) if weekly else 0,
+        "weekly": weekly,
+        "counts": counts,
+        "as_of": end,
+        "current": {"length": current_length, "start": current_start, "end": end if current_length else None},
+        "longest": {"length": longest_length, "start": longest_start, "end": longest_end},
+        "languages": language_percentages,
+    }
 
 
-def summarise(user):
-    cal = user["contributionsCollection"]["contributionCalendar"]
-    weeks = [w["contributionDays"] for w in cal["weeks"]]
-    days = [d for w in weeks for d in w]
-    weekly = [sum(d["contributionCount"] for d in w) for w in weeks]
-    cur, best = streaks(days)
-    by_size, by_repo = languages(user["repositories"]["nodes"])
-    return dict(
-        total=cal["totalContributions"],
-        active=sum(1 for d in days if d["contributionCount"] > 0),
-        best_week=max(weekly) if weekly else 0,
-        weekly=weekly, weeks=weeks,
-        current=cur, longest=best,
-        by_size=by_size, by_repo=by_repo)
+def svg_open(height: int) -> str:
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{height}" '
+        f'viewBox="0 0 {WIDTH} {height}" font-family="{MONO}">{STYLE}'
+    )
 
 
-# ---------------------------------------------------------------- drawing
-
-def style(extra="", font=None):
-    t = DARK
-    return (f"<style>{font or font_text()}"
-            f".d-f{{fill:{t['data']}}}.d-s{{stroke:{t['data']}}}"
-            f".e-f{{fill:{t['emph']}}}.m-f{{fill:{t['dim']}}}"
-            f".u-s{{stroke:{t['rule']}}}.r{{stroke:{t['surface']}}}"
-            f".w{{fill:{t['data']};opacity:.16}}{extra}</style>")
+def fmt_range(item: dict) -> str:
+    if not item.get("start") or not item.get("end"):
+        return "no active streak"
+    start = item["start"]
+    end = item["end"]
+    return f"{start.strftime('%b').lower()} {start.day} - {end.strftime('%b').lower()} {end.day}"
 
 
-def head(w, h, font=None, card=True):
-    base = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" '
-            f'viewBox="0 0 {w} {h}" fill="none" font-family="{MONO}">'
-            + style(font=font))
-    if card:
-        base += (f'<rect x="1" y="1" width="{w-2}" height="{h-2}" rx="13" '
-                 f'fill="{DARK["surface"]}" stroke="{DARK["rule"]}" stroke-width="1.5"/>')
-    return base
+def sparkline(values: list[int], x: float, y: float, width: float, height: float) -> str:
+    values = values or [0]
+    peak = max(values) or 1
+    if len(values) == 1:
+        points = [(x, y + height / 2)]
+    else:
+        points = [
+            (x + index * width / (len(values) - 1), y + height - (value / peak) * height)
+            for index, value in enumerate(values)
+        ]
+    line = " ".join(f"{px:.1f},{py:.1f}" for px, py in points)
+    fill = f"{x:.1f},{y + height:.1f} {line} {x + width:.1f},{y + height:.1f}"
+    return (
+        f'<polygon points="{fill}" class="soft" opacity=".18"/>'
+        f'<polyline points="{line}" fill="none" class="rule" stroke-width="1.6" '
+        f'stroke-linejoin="round" stroke-linecap="round"/>'
+        f'<circle cx="{points[-1][0]:.1f}" cy="{points[-1][1]:.1f}" r="3.2" class="emph"/>'
+    )
 
 
-def fade(delay, dur=0.45):
-    return (f'<animate attributeName="opacity" from="0" to="1" '
-            f'begin="{delay:.2f}s" dur="{dur}s" fill="freeze"/>')
+def render_hero(summary: dict) -> str:
+    portrait_path = ASSETS / "ascii-portrait.png"
+    portrait_data = base64.b64encode(portrait_path.read_bytes()).decode("ascii")
+    height = 730
+    parts = [svg_open(height)]
+    parts.append('<text x="20" y="28" font-size="11" font-weight="600"><tspan class="blue">retr0seven</tspan><tspan class="dim"> / README.md</tspan></text>')
+
+    portrait_x = 34
+    portrait_y = 42
+    portrait_w = 552
+    portrait_h = 420
+    stripe_h = 8
+    stripe_count = math.ceil(portrait_h / stripe_h)
+    parts.append(
+        f'<defs><image id="portrait" href="data:image/png;base64,{portrait_data}" '
+        f'x="{portrait_x}" y="{portrait_y}" width="{portrait_w}" height="{portrait_h}" '
+        f'preserveAspectRatio="xMidYMid meet"/></defs>'
+    )
+    duration = 0.075
+    for index in range(stripe_count):
+        y = portrait_y + index * stripe_h
+        begin = index * duration
+        clip_id = f"stripe{index}"
+        parts.append(
+            f'<clipPath id="{clip_id}"><rect x="{portrait_x}" y="{y}" width="0" height="{stripe_h + 1}">'
+            f'<animate attributeName="width" from="0" to="{portrait_w}" begin="{begin:.2f}s" dur=".075s" fill="freeze"/>'
+            f'</rect></clipPath><g clip-path="url(#{clip_id})"><use href="#portrait"/></g>'
+        )
+
+    reveal_end = stripe_count * duration + 0.15
+    parts.append(f'<g opacity="0"><animate attributeName="opacity" from="0" to="1" begin="{reveal_end:.2f}s" dur=".45s" fill="freeze"/>')
+    parts.append('<text x="34" y="505" class="emph" font-size="31" font-weight="600">Mouad Hassari</text>')
+    parts.append('<text x="34" y="531" class="blue" font-size="13">IT-Specialist | Senior Computer Science Student @AUI</text>')
+    parts.append(f'<text x="34" y="594" class="emph" font-size="47" font-weight="500">{summary["total"]}</text>')
+    parts.append('<text x="34" y="615" class="dim" font-size="11">contributions in the last year</text>')
+    parts.append(f'<text x="566" y="570" text-anchor="end" class="emph" font-size="19" font-weight="600">{summary["active"]}</text>')
+    parts.append('<text x="566" y="589" text-anchor="end" class="dim" font-size="10">active days</text>')
+    parts.append(f'<text x="566" y="623" text-anchor="end" class="emph" font-size="19" font-weight="600">{summary["best_week"]}</text>')
+    parts.append('<text x="566" y="642" text-anchor="end" class="dim" font-size="10">best week</text>')
+    parts.append(sparkline(summary["weekly"], 34, 646, 532, 56))
+    parts.append('</g></svg>')
+    return "".join(parts)
 
 
-def wipe(cid, x, y, w, h, delay, dur=REVEAL):
-    """clipPath reveal plus the cursor block that rides its edge."""
-    clip = (f'<clipPath id="{cid}"><rect x="{x}" y="{y}" height="{h}" width="0">'
-            f'<animate attributeName="width" from="0" to="{w}" '
-            f'begin="{delay:.2f}s" dur="{dur}s" fill="freeze"/></rect></clipPath>')
-    cursor = (f'<rect y="{y}" width="2" height="{h}" class="d-f" opacity="0">'
-              f'<animate attributeName="x" from="{x}" to="{x + w}" '
-              f'begin="{delay:.2f}s" dur="{dur}s" fill="freeze"/>'
-              f'<set attributeName="opacity" to="0.55" begin="{delay:.2f}s"/>'
-              f'<set attributeName="opacity" to="0" '
-              f'begin="{delay + dur:.2f}s"/></rect>')
-    return clip, cursor
+def heat_level(value: int, peak: int) -> int:
+    if value <= 0:
+        return 0
+    ratio = value / max(peak, 1)
+    if ratio <= 0.25:
+        return 1
+    if ratio <= 0.5:
+        return 2
+    if ratio <= 0.75:
+        return 3
+    return 4
 
 
-def label(x, y, text, size=11, cls="m-f", anchor="start", extra=""):
-    a = f' text-anchor="{anchor}"' if anchor != "start" else ""
-    return (f'<text x="{x}" y="{y}" class="{cls}" font-size="{size}"{a}'
-            f'{extra}>{text}</text>')
+def render_stats_panel(summary: dict) -> str:
+    height = 242
+    parts = [svg_open(height)]
+    parts.append('<line x1="155" y1="18" x2="155" y2="125" class="rule" opacity=".8"/>')
+    parts.append('<line x1="310" y1="18" x2="310" y2="125" class="rule" opacity=".8"/>')
+    parts.append('<line x1="467" y1="18" x2="467" y2="125" class="rule" opacity=".8"/>')
+
+    current = summary["current"]
+    longest = summary["longest"]
+    parts.append(f'<text x="34" y="57" class="emph" font-size="31" font-weight="600">{current["length"]}</text>')
+    parts.append('<text x="34" y="79" class="dim" font-size="10">current streak</text>')
+    parts.append(f'<text x="34" y="99" class="blue" font-size="9">{escape(fmt_range(current))}</text>')
+
+    parts.append(f'<text x="185" y="57" class="emph" font-size="31" font-weight="600">{longest["length"]}</text>')
+    parts.append('<text x="185" y="79" class="dim" font-size="10">longest streak</text>')
+    parts.append(f'<text x="185" y="99" class="blue" font-size="9">{escape(fmt_range(longest))}</text>')
+
+    parts.append('<text x="331" y="31" class="dim" font-size="9" letter-spacing="1">TOP LANGUAGES</text>')
+    for index, (name, percentage) in enumerate(summary["languages"][:5]):
+        y = 53 + index * 15
+        parts.append(f'<text x="331" y="{y}" class="emph" font-size="9" font-weight="600">{escape(name)}</text>')
+        bar_width = max(4, 72 * percentage / 100)
+        parts.append(f'<rect x="391" y="{y - 7}" width="72" height="5" rx="2.5" class="soft" opacity=".25"/>')
+        parts.append(f'<rect x="391" y="{y - 7}" width="{bar_width:.1f}" height="5" rx="2.5" class="ink"/>')
+        parts.append(f'<text x="463" y="{y}" text-anchor="end" class="dim" font-size="8">{percentage:.0f}%</text>')
+
+    parts.append('<text x="485" y="31" class="dim" font-size="9" letter-spacing="1">LAST 90 DAYS</text>')
+    end = summary["as_of"]
+    start = end - timedelta(days=89)
+    # Align the first column to Sunday for a GitHub-like matrix.
+    aligned_start = start - timedelta(days=(start.weekday() + 1) % 7)
+    days = [(aligned_start + timedelta(days=index)) for index in range(98)]
+    peak = max((summary["counts"].get(day.isoformat(), 0) for day in days), default=1)
+    cell = 6
+    gap = 2
+    base_x = 485
+    base_y = 45
+    for day in days:
+        week = (day - aligned_start).days // 7
+        weekday = (day.weekday() + 1) % 7
+        value = summary["counts"].get(day.isoformat(), 0)
+        level = heat_level(value, peak)
+        opacity = "1" if start <= day <= end else ".28"
+        parts.append(
+            f'<rect x="{base_x + week * (cell + gap)}" y="{base_y + weekday * (cell + gap)}" '
+            f'width="{cell}" height="{cell}" rx="1.2" class="cell{level}" opacity="{opacity}"/>'
+        )
+
+    parts.append('<line x1="34" y1="144" x2="586" y2="144" class="rule"/>')
+    parts.append('<text x="34" y="169" class="dim" font-size="9" letter-spacing="1">PROFILE SIGNAL</text>')
+    parts.append('<text x="34" y="194" class="emph" font-size="13" font-weight="600">software · systems · security</text>')
+    parts.append('<text x="34" y="216" class="dim" font-size="10">public activity refreshes daily from GitHub GraphQL</text>')
+    parts.append('</svg>')
+    return "".join(parts)
 
 
-def hbar(x, y, w, h, cls="d-f", r=3.0):
-    """Horizontal bar: rounded data-end on the right, square at the baseline."""
-    if w <= 0.6:
-        return ""
-    r = min(r, h / 2.0, w)
-    return (f'<path d="M{x:.1f} {y:.1f}H{x + w - r:.1f}'
-            f'Q{x + w:.1f} {y:.1f} {x + w:.1f} {y + r:.1f}'
-            f'V{y + h - r:.1f}Q{x + w:.1f} {y + h:.1f} {x + w - r:.1f} {y + h:.1f}'
-            f'H{x:.1f}Z" class="{cls}"/>')
+def write_if_changed(path: Path, content: str) -> None:
+    if path.exists() and path.read_text(encoding="utf-8") == content:
+        return
+    path.write_text(content, encoding="utf-8")
 
 
-def draw_stats(s):
-    """Hero number, the two secondary counts, and the weekly sparkline."""
-    H = 148
-    weekly = s["weekly"] or [0]
-    peak = max(weekly) or 1
-    p = [head(WIDTH, H)]
-    p.append(f'<g opacity="0">{fade(0.10)}'
-             + label(0, 50, s["total"], 52, "e-f", extra=' font-weight="600"')
-             + label(0, 72, "contributions in the last year", 12) + '</g>')
-    for i, (val, lab) in enumerate([(s["active"], "active days"),
-                                    (s["best_week"], "best week")]):
-        p.append(f'<g opacity="0">{fade(0.30 + i * 0.12)}'
-                 + label(WIDTH, 30 + i * 40, val, 19, "e-f", "end",
-                         ' font-weight="600"')
-                 + label(WIDTH, 47 + i * 40, lab, 11, "m-f", "end") + '</g>')
-
-    base, top = H - 10, H - 58
-    span = base - top
-    step = WIDTH / max(len(weekly) - 1, 1)
-    pts = [(i * step, base - (v / peak) * span) for i, v in enumerate(weekly)]
-    clip, cursor = wipe("rs", 0, top - 6, WIDTH, span + 8, 0.50)
-    p.append(clip)
-    p.append('<g clip-path="url(#rs)">')
-    p.append(f'<path d="M{pts[0][0]:.1f} {base:.1f}'
-             + "".join(f'L{x:.1f} {y:.1f}' for x, y in pts)
-             + f'L{pts[-1][0]:.1f} {base:.1f}Z" class="w"/>')
-    p.append(f'<path d="M{pts[0][0]:.1f} {pts[0][1]:.1f}'
-             + "".join(f'L{x:.1f} {y:.1f}' for x, y in pts[1:])
-             + f'" class="d-s" stroke-width="2" stroke-linejoin="round" '
-             f'stroke-linecap="round"/>')
-    p.append("</g>")
-    p.append(cursor)
-    ex, ey = pts[-1]
-    p.append(f'<circle cx="{ex - 2:.1f}" cy="{ey:.1f}" r="4.5" class="e-f r" '
-             f'stroke-width="2" opacity="0">{fade(0.50 + REVEAL, 0.35)}</circle>')
-    p.append("</svg>")
-    return "".join(p)
-
-
-def draw_streak(s):
-    """Current and longest streak, split by a hairline."""
-    H = 96
-    cells = []
-    for k, lab in (("current", "current streak"), ("longest", "longest streak")):
-        r = s[k]
-        span = (f"{pretty(r['start'])} &#8211; {pretty(r['end'])}"
-                if r["length"] else "&#8212;")
-        cells.append((r["length"], lab, span))
-
-    p = [head(WIDTH, H)]
-    mid = WIDTH / 2
-    p.append(f'<line x1="{mid:.0f}" y1="16" x2="{mid:.0f}" y2="80" '
-             f'class="u-s" stroke-width="1" opacity="0">{fade(0.20)}</line>')
-    for i, (val, lab, span) in enumerate(cells):
-        x = LEFT if i == 0 else mid + LEFT
-        p.append(f'<g opacity="0">{fade(0.12 + i * 0.14)}'
-                 + label(x, 44, f"{val}", 34, "e-f", extra=' font-weight="600"')
-                 + label(x, 64, lab, 11)
-                 + label(x, 80, span, 10) + '</g>')
-    p.append("</svg>")
-    return "".join(p)
-
-
-def draw_langs(s):
-    """Two small charts: share of bytes, and count of repos by main language."""
-    rows = max(len(s["by_size"]), len(s["by_repo"]), 1)
-    H = 26 + rows * 22 + 6
-    colw = (WIDTH - LEFT - 30) / 2
-    name_w, bar_max = 82, colw - 82 - 44
-
-    p = [head(WIDTH, H)]
-    groups = [(LEFT, "by bytes", s["by_size"], True),
-              (LEFT + colw + 30, "by repos", s["by_repo"], False)]
-    for gi, (gx, title, data, as_pct) in enumerate(groups):
-        p.append(f'<g opacity="0">{fade(0.10 + gi * 0.10)}'
-                 + label(gx, 12, title.upper(), 9, "m-f",
-                         extra=' letter-spacing="1.3"') + '</g>')
-        if not data:
-            continue
-        top = max(v for _, v in data) or 1
-        total = sum(v for _, v in data) or 1
-        cid = f"rl{gi}"
-        clip, cursor = wipe(cid, gx + name_w, 20, bar_max, rows * 22,
-                            0.34 + gi * 0.12, 0.95)
-        p.append(clip)
-        for ri, (name, val) in enumerate(data):
-            y = 26 + ri * 22
-            shown = (f"{val / total * 100:.0f}%" if as_pct else f"{val}")
-            p.append(f'<g opacity="0">{fade(0.24 + gi * 0.10 + ri * 0.05)}'
-                     + label(gx, y + 8, name.lower()[:11], 11, "e-f")
-                     + label(gx + colw - 6, y + 8, shown, 11, "m-f", "end")
-                     + '</g>')
-            p.append(f'<g clip-path="url(#{cid})">'
-                     + hbar(gx + name_w, y, bar_max * val / top, 7)
-                     + '</g>')
-        p.append(cursor)
-    p.append("</svg>")
-    return "".join(p)
-
-
-def draw_heading(word):
-    """A section heading in the mono face, with a hairline running right.
-
-    GitHub strips <style> and style= from markdown, so a real markdown heading
-    can only ever be GitHub's own sans. Rendering the label as an SVG is the
-    only way to put the page's own typeface on it. The rule starts past the
-    longest plausible advance (0.6em is the widest common monospace ratio), so
-    a narrower font on the viewer's machine widens the gap slightly rather than
-    colliding with the text.
-    """
-    FS = 16
-    H = 32
-    x = 18
-    text_end = x + len(word) * FS * 0.6 + 18
-    p = [head(WIDTH, H, font=font_head())]
-    p.append(label(x, 21, word, FS, "e-f", extra=' font-weight="600"'))
-    p.append(f'<line x1="{text_end:.0f}" y1="15.5" x2="{WIDTH - 18}" y2="15.5" '
-             f'class="u-s" stroke-width="1"/>')
-    p.append("</svg>")
-    return "".join(p)
-
-
-def draw_year(s):
-    """Seven rows by fifty-three weeks, intensity as a character."""
-    FS, LH, COLW = 9.2, 11.0, 2
-    CW = FS * 0.6
-    pad_l, pad_t = LEFT, 44
-    weeks = s["weeks"]
-    ncols = len(weeks) * COLW
-    H = int(pad_t + 7 * LH + 26)
-
-    def level(v):
-        for i, cut in enumerate((0, 2, 5, 9)):
-            if v <= cut:
-                return i
-        return 4
-
-    p = [head(WIDTH, H)]
-    p.append(f'<g opacity="0">{fade(0.10)}'
-             + label(pad_l, 16, "THE YEAR", 9, "m-f",
-                     extra=' letter-spacing="1.3"')
-             + label(pad_l, 32, f"{s['active']} of "
-                     f"{sum(len(w) for w in weeks)} days had a contribution", 11)
-             + '</g>')
-
-    # ramp legend, so the encoding is never carried by shade alone
-    lx = WIDTH - 6
-    p.append(f'<g opacity="0">{fade(1.30)}'
-             + label(lx - 78, 32, "less", 9, "m-f", "end")
-             + f'<text xml:space="preserve" x="{lx - 72}" y="32" class="d-f" '
-             f'font-size="{FS}">{" ".join(RAMP[1:])}</text>'
-             + label(lx, 32, "more", 9, "m-f", "end") + '</g>')
-
-    for r in range(7):
-        chars = []
-        for w in weeks:
-            day = next((d for d in w if d.get("weekday") == r), None)
-            v = day["contributionCount"] if day else 0
-            chars.append(RAMP[level(v)] * COLW)
-        line = "".join(chars).rstrip()
-        if not line:
-            continue
-        y = pad_t + r * LH
-        w_px = max(len(line), 1) * CW
-        cid = f"ry{r}"
-        delay = 0.30 + r * 0.07
-        p.append(f'<clipPath id="{cid}"><rect x="{pad_l}" y="{y}" '
-                 f'height="{LH}" width="0"><animate attributeName="width" '
-                 f'from="0" to="{w_px:.1f}" begin="{delay:.2f}s" dur="0.40s" '
-                 f'fill="freeze"/></rect></clipPath>')
-        safe = line.replace("&", "&amp;").replace("<", "&lt;")
-        p.append(f'<g clip-path="url(#{cid})"><text xml:space="preserve" '
-                 f'x="{pad_l}" y="{y + FS - 0.6:.1f}" class="d-f" '
-                 f'font-size="{FS}">{safe}</text></g>')
-
-    for r, lab in ((1, "mon"), (3, "wed"), (5, "fri")):
-        p.append(label(pad_l - 7, pad_t + r * LH + FS - 0.6, lab, 9, "m-f",
-                       "end"))
-
-    last_m, last_x = None, -999.0
-    base_y = pad_t + 7 * LH + 13
-    for i, w in enumerate(weeks):
-        m = int(w[0]["date"][5:7])
-        x = pad_l + i * COLW * CW
-        if m != last_m and i < len(weeks) - 1 and x - last_x >= 34:
-            p.append(label(x, base_y, MON[m - 1], 9, "m-f"))
-            last_x = x
-        last_m = m
-
-    p.append("</svg>")
-    return "".join(p)
-
-
-# ---------------------------------------------------------------- main
-
-def write(path, svg):
-    old = ""
-    if os.path.exists(path):
-        with open(path, encoding="utf-8") as f:
-            old = f.read()
-    if old == svg:
-        return False
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(svg)
-    return True
-
-
-def main():
-    token = os.environ.get("GITHUB_TOKEN")
-    if not token:
-        sys.exit("GITHUB_TOKEN is not set")
-    login = os.environ.get("GH_LOGIN", "Retr0Seven")
-    out_dir = os.environ.get("OUT_DIR", ".")
-
-    s = summarise(fetch(login, token))
-    files = {"stats.svg": draw_stats(s), "streak.svg": draw_streak(s),
-             "langs.svg": draw_langs(s), "year.svg": draw_year(s)}
-    for word in ("about", "experience", "stack", "projects", "certifications", "stats", "about this page"):
-        files[f"hd-{word.replace(' ', '-')}.svg"] = draw_heading(word)
-
-    changed = [n for n, svg in files.items()
-               if write(os.path.join(out_dir, n), svg)]
-    print(f"{s['total']} contributions, {s['active']} active days, "
-          f"best week {s['best_week']}, current streak "
-          f"{s['current']['length']}, longest {s['longest']['length']}")
-    print("languages by bytes: "
-          + ", ".join(f"{n} {v}" for n, v in s["by_size"]))
-    print("updated: " + (", ".join(sorted(changed)) if changed else "nothing"))
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--demo", action="store_true", help="render the included offline demo data")
+    args = parser.parse_args()
+    summary = load_demo() if args.demo else fetch()
+    write_if_changed(ROOT / "hero.svg", render_hero(summary))
+    write_if_changed(ROOT / "stats-panel.svg", render_stats_panel(summary))
 
 
 if __name__ == "__main__":

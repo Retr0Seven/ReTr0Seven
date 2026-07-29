@@ -1,1 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="620" height="32" viewBox="0 0 620 32" fill="none" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,&apos;Liberation Mono&apos;,monospace"><style>.d-f{fill:#7ee787}.d-s{stroke:#7ee787}.e-f{fill:#f0f6fc}.m-f{fill:#8b9baa}.u-s{stroke:#1d3444}.r{stroke:#05090f}.w{fill:#7ee787;opacity:.16}</style><rect x="1" y="1" width="618" height="30" rx="13" fill="#05090f" stroke="#1d3444" stroke-width="1.5"/><text x="18" y="21" class="e-f" font-size="16" font-weight="600">about</text><line x1="84" y1="15.5" x2="602" y2="15.5" class="u-s" stroke-width="1"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="38" viewBox="0 0 620 38" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace">
+<style>
+.h{fill:#24292f}.line{stroke:#d0d7de}.tag{fill:#f6f8fa;stroke:#d0d7de}.t{fill:#57606a}.blue{fill:#0969da}
+@media(prefers-color-scheme:dark){.h{fill:#f0f6fc}.line{stroke:#30363d}.tag{fill:#0d1117;stroke:#30363d}.t{fill:#c9d1d9}.blue{fill:#58a6ff}}
+</style>
+<text x="0" y="25" class="h" font-size="15" font-weight="600">about</text><line x1="67" y1="20" x2="620" y2="20" class="line"/></svg>
