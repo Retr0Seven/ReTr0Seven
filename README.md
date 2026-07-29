@@ -1,138 +1,90 @@
-
 <div align="center">
 
-<h1>Hi, I'm Mouad Hassari</h1>
+<img src="./ascii.svg" width="620" alt="Animated ASCII logo for Mouad Hassari — Retr0Seven"/>
 
-<p>
-  <strong>Computer Science student at Al Akhawayn University</strong><br>
-  <strong>IT Technician & Support Specialist at AUI</strong><br>
-  <strong>Tech builder working across software, support, systems, and creative technology</strong>
-</p>
+<img src="./stats.svg" width="620" alt="Retr0Seven GitHub activity"/>
 
-<p>I like building practical tools, solving real technical problems, and learning how modern systems work from the inside out.</p>
-
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Mouad%20Hassari-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/mouad-hassari/)
-[![Email](https://img.shields.io/badge/Email-md.hassari%40gmail.com-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](mailto:md.hassari@gmail.com)
-[![Pexels](https://img.shields.io/badge/Pexels-Photography-05A081?style=for-the-badge&logo=pexels&logoColor=white)](https://www.pexels.com/@mouad-hassari-2158294877/)
+[portfolio](https://webme-psi.vercel.app/) &nbsp;·&nbsp;
+[linkedin](https://www.linkedin.com/in/mouad-hassari/) &nbsp;·&nbsp;
+[email](mailto:md.hassari@gmail.com)
 
 </div>
 
----
+<img src="./hd-about.svg" width="620" alt="about"/>
 
-## About Me
+> **IT-Specialist | Senior Computer Science Student @AUI**<br>
+> Full-stack development, cybersecurity, and campus IT operations.
 
-I'm a Computer Science student at **Al Akhawayn University** and a part-time **IT Technician and Support Specialist** at AUI, where I have been working since **June 2023**.
+I am a Computer Science and Engineering student at Al Akhawayn University with
+more than three years of practical IT support experience. I build websites,
+dashboards, backend systems, databases, and business-focused digital solutions
+while developing deeper expertise in cybersecurity and systems administration.
 
-My work sits at the intersection of **software development, IT support, and systems**. I enjoy building useful tools, troubleshooting real hardware and software issues, supporting users, and understanding how reliable technical environments are designed, deployed, and maintained.
+My profile sits between software and operations: I understand how a product is
+built, how real users interact with it, and how the surrounding systems are
+supported when something breaks. My Communication Studies minor also adds
+photography, videography, visual design, and client communication to that mix.
 
----
+<img src="./hd-experience.svg" width="620" alt="experience"/>
 
-## Tech Stack
+**Al Akhawayn University in Ifrane** &nbsp;·&nbsp; <samp>part-time IT help-desk specialist · 2023—present</samp><br>
+Provide front-line support for Windows endpoints, peripherals, account access,
+network and VPN issues, classrooms, and university computer labs. Improved
+triage and repeat-fix documentation, reducing average resolution time by about
+80%, and supported imaging, deployment, and configuration of 50+ lab machines.
 
-### Languages
+<img src="./hd-stack.svg" width="620" alt="stack"/>
 
-![Java](https://img.shields.io/badge/Java-111827?style=flat&logo=openjdk&logoColor=white)
-![Python](https://img.shields.io/badge/Python-111827?style=flat&logo=python&logoColor=3776AB)
-![JavaScript](https://img.shields.io/badge/JavaScript-111827?style=flat&logo=javascript&logoColor=F7DF1E)
-![HTML5](https://img.shields.io/badge/HTML5-111827?style=flat&logo=html5&logoColor=E34F26)
-![CSS3](https://img.shields.io/badge/CSS3-111827?style=flat&logo=css3&logoColor=1572B6)
-![SQL](https://img.shields.io/badge/SQL-111827?style=flat&logo=postgresql&logoColor=4169E1)
+<samp>typescript &nbsp; next.js 16 &nbsp; react 19 &nbsp; postgresql &nbsp; prisma &nbsp; tailwind css &nbsp; zod &nbsp; recharts &nbsp; vercel &nbsp; neon</samp>
 
-### Web Development
+<samp>windows &nbsp; linux &nbsp; active directory &nbsp; microsoft 365 &nbsp; tcp/ip &nbsp; dns &nbsp; dhcp &nbsp; vpn &nbsp; rdp &nbsp; git</samp>
 
-![Django](https://img.shields.io/badge/Django-111827?style=flat&logo=django&logoColor=092E20)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-111827?style=flat&logo=springboot&logoColor=6DB33F)
-![Next.js](https://img.shields.io/badge/Next.js-111827?style=flat&logo=nextdotjs&logoColor=white)
-![React](https://img.shields.io/badge/React-111827?style=flat&logo=react&logoColor=61DAFB)
+<img src="./hd-projects.svg" width="620" alt="projects"/>
 
-### Databases
+**RoomPulse** &nbsp;·&nbsp; <samp>in development · campus IT operations</samp><br>
+An internal AUI platform for QR-based classroom issue reporting, staff ticket
+triage, room and category administration, analytics, room-health scoring, QR
+labels, and protected evidence attachments. Built with Next.js 16, React 19,
+TypeScript, PostgreSQL, Prisma, Tailwind CSS, Zod, Recharts, Vercel, and Neon.
 
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-111827?style=flat&logo=postgresql&logoColor=4169E1)
-![MongoDB](https://img.shields.io/badge/MongoDB-111827?style=flat&logo=mongodb&logoColor=47A248)
-![NoSQL](https://img.shields.io/badge/NoSQL-111827?style=flat&logo=databricks&logoColor=FF3621)
+**project_02** &nbsp;·&nbsp; <samp>status: ideating</samp><br>
+Problem discovery in progress. The project will appear here after its purpose,
+scope, and users are clearly defined.
 
-### Tools & Platforms
+**project_03** &nbsp;·&nbsp; <samp>status: loading</samp><br>
+Next build queued. Details remain hidden until there is something real to ship.
 
-![Git](https://img.shields.io/badge/Git-111827?style=flat&logo=git&logoColor=F05032)
-![GitHub](https://img.shields.io/badge/GitHub-111827?style=flat&logo=github&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-111827?style=flat&logo=docker&logoColor=2496ED)
-![Vercel](https://img.shields.io/badge/Vercel-111827?style=flat&logo=vercel&logoColor=white)
-![Windows](https://img.shields.io/badge/Windows-111827?style=flat&logo=windows&logoColor=0078D4)
+<img src="./hd-certifications.svg" width="620" alt="certifications"/>
 
-### IT / Support Skills
+**Google Cybersecurity Professional Certificate**<br>
+Cybersecurity fundamentals, network security, Linux, SQL, Python, SIEM, and IDS.
 
-`Helpdesk Support` | `Hardware Troubleshooting` | `Software Troubleshooting` | `Windows Support` | `Computer Imaging` | `Domain Setup` | `Classroom Technology` | `Projector Maintenance` | `Lab Desktop Setup` | `Faculty & Staff Support`
+**CS50 Introduction to Cybersecurity**<br>
+Threat analysis, authentication, encryption, malware, web security, privacy,
+and risk-based security thinking.
 
----
-
-## Current Focus
-
-- Improving my full-stack development workflow with modern web technologies.
-- Strengthening cybersecurity fundamentals through hands-on learning.
-- Building a deeper understanding of relational and NoSQL database systems.
-- Growing as a professional IT support specialist through real-world technical support.
-
----
-
-## Featured Work / Projects
-
-| Project | Description | Tech | Status |
-| --- | --- | --- | --- |
-| **Campus IT Toolkit** | A practical internal-style toolkit for organizing support tasks, device notes, and troubleshooting workflows. | Python, SQL, Web | Planned |
-| **Portfolio Website** | A clean personal portfolio for projects, experience, photography, and technical writing. | Next.js, CSS, Vercel | In Progress |
-| **Database Practice Lab** | Small database projects focused on SQL design, queries, and backend integration. | PostgreSQL, Django | Learning |
-| **Security Notes & Labs** | Personal notes and small labs from cybersecurity learning and fundamentals. | Linux, Networking, Security | Ongoing |
-
----
-
-## Certifications & Learning
-
-- **CS50x** - Introduction to Computer Science
-- **CS50 Cybersecurity**
-- **Google Technical Support Fundamentals**
-- **Google Cybersecurity**
-- **Django with SQL and Databases**
-- **Introduction to NoSQL Databases**
-
----
-
-## Photography / Creative Side
-
-Outside of tech, I also enjoy photography and sharing visual work.  
-You can find some of my photos on **Pexels**:
-
-[pexels.com/@mouad-hassari-2158294877](https://www.pexels.com/@mouad-hassari-2158294877/)
-
----
-
-## GitHub Stats
+<img src="./hd-stats.svg" width="620" alt="stats"/>
 
 <div align="center">
 
-<img width="100%" src="https://github-profile-summary-cards.vercel.app/api/cards/profile-details?username=Retr0Seven&theme=github_dark" alt="Mouad Hassari's GitHub contribution graph" />
+<img src="./streak.svg" width="620" alt="Current and longest GitHub contribution streak"/>
 
-<img width="49%" src="https://github-profile-summary-cards.vercel.app/api/cards/stats?username=Retr0Seven&theme=github_dark" alt="Mouad Hassari's GitHub stats" />
-<img width="49%" src="https://github-profile-summary-cards.vercel.app/api/cards/repos-per-language?username=Retr0Seven&theme=github_dark" alt="Top languages used by Retr0Seven" />
+<img src="./langs.svg" width="620" alt="Top public repository languages"/>
 
-<img width="49%" src="https://streak-stats.demolab.com/?user=Retr0Seven&theme=github-dark-blue&hide_border=true&background=0D1117" alt="Mouad Hassari's GitHub streak" />
-
-</div>
-
----
-
-## Contact
-
-I'm open to conversations about software projects, IT support, cybersecurity learning, databases, and creative tech.
-
-- **LinkedIn:** [linkedin.com/in/mouad-hassari](https://www.linkedin.com/in/mouad-hassari/)
-- **Email:** [md.hassari@gmail.com](mailto:md.hassari@gmail.com)
-- **GitHub:** [github.com/Retr0Seven](https://github.com/Retr0Seven)
-- **Pexels:** [pexels.com/@mouad-hassari-2158294877](https://www.pexels.com/@mouad-hassari-2158294877/)
-
----
-
-<div align="center">
-
-<strong>Building practical software, supporting real systems, and learning the technology that connects both.</strong>
+<img src="./year.svg" width="620" alt="The last contribution year"/>
 
 </div>
+
+<img src="./hd-about-this-page.svg" width="620" alt="about this page"/>
+
+Every graphic is generated or stored inside this repository. The avatar is
+converted into animated ASCII and rendered with SMIL inside `ascii.svg`. The
+statistics are redrawn daily from GitHub's GraphQL API by a scheduled GitHub
+Action, which commits only files that changed.
+
+No third-party statistics-card server is used. The SVGs use system monospace
+fonts, so the repository contains no bundled font binaries.
+
+<sub>Adapted from the self-generated profile README system by
+[andriidrok1](https://github.com/andriidrok1/andriidrok1). Original attribution
+and portrait-pipeline notes are preserved in [CREDITS.md](CREDITS.md).</sub>
